@@ -44,8 +44,8 @@ async function sha256Hex(value) {
 }
 
 function constantTimeEqual(a, b) {
-  const left = String(a || '').toLowerCase();
-  const right = String(b || '').toLowerCase();
+  const left = String(a || '').trim().toLowerCase();
+  const right = String(b || '').trim().toLowerCase();
   const length = Math.max(left.length, right.length);
   let diff = left.length ^ right.length;
   for (let i = 0; i < length; i += 1) {
