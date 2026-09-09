@@ -4,9 +4,14 @@ Entry Live Studio가 Supabase URL/브라우저 공개용 키를 직접 입력받
 
 ## Cloudflare Pages 배포
 
-이 저장소를 Cloudflare Pages에 연결하고 프로젝트 이름을 **`supabase-settings-fetch`** 로 지정하세요. 빌드 명령은 비워 두고, 정적 파일 출력은 저장소 루트를 사용하면 됩니다. `/functions/api/settings.js` 때문에 `POST /api/settings`가 자동으로 Pages Function이 됩니다.
+이 저장소를 Cloudflare Pages에 연결하고 프로젝트 이름을 **`supabase-settings-fetch`** 로 지정하세요.
 
-`wrangler.toml`은 필요하지 않으며 이 저장소에는 비밀값을 넣지 않습니다.
+- Production branch: `main`
+- Framework preset: 없음
+- Build command: `exit 0` 권장
+- Build output directory: `.`
+
+`/functions/api/settings.js` 때문에 `POST /api/settings`가 자동으로 Pages Function이 됩니다. `wrangler.toml`은 필요하지 않으며 이 저장소에는 비밀값을 넣지 않습니다.
 
 ## Cloudflare Variables and Secrets
 
@@ -21,7 +26,7 @@ Cloudflare Dashboard → Workers & Pages → 해당 Pages 프로젝트 → Setti
 
 > `sb_secret_...` 또는 `service_role` 키는 절대로 등록하지 마세요. API도 이를 거부합니다.
 
-배포된 루트 페이지에서 비밀번호를 입력하면 브라우저 내부에서 SHA-256을 계산할 수 있습니다. 비밀번호 원문은 서버로 전송되지 않습니다.
+배포된 루트 페이지에서 비밀번호를 입력하면 브라우저 내부에서 SHA-256을 계산할 수 있습니다. **루트 페이지의 해시 계산 과정에서는** 비밀번호 원문이 서버로 전송되지 않습니다. Entry Live Studio가 `/api/settings`를 호출할 때는 사용자가 입력한 비밀번호가 HTTPS 요청 본문으로 전송되고, 서버에서 SHA-256으로 검증된 뒤 저장되지 않습니다.
 
 ## API
 
