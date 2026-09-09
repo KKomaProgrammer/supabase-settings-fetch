@@ -1,0 +1,30 @@
+<!doctype html>
+<html lang="ko">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1">
+  <title>Supabase Settings Fetch</title>
+  <style>
+    :root{font-family:system-ui,-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif;color:#172033;background:#f5f7fb}*{box-sizing:border-box}body{margin:0;padding:32px 18px}.card{max-width:720px;margin:auto;background:#fff;border:1px solid #e4e9f2;border-radius:20px;padding:24px;box-shadow:0 14px 40px rgba(22,33,52,.08)}h1{margin:0 0 8px;font-size:25px}p{color:#59657a;line-height:1.6}label{display:block;font-weight:700;margin:18px 0 7px}input{width:100%;border:1px solid #ccd5e4;border-radius:12px;padding:12px 14px;font:inherit}button{margin-top:10px;border:0;border-radius:12px;background:#315efb;color:white;padding:11px 16px;font-weight:700;cursor:pointer}.result{margin-top:14px;padding:12px;border-radius:12px;background:#f1f4f9;word-break:break-all;font-family:ui-monospace,SFMono-Regular,Consolas,monospace}.note{font-size:13px}</style>
+</head>
+<body>
+  <main class="card">
+    <h1>Supabase Settings Fetch</h1>
+    <p>Entry Live Studio용 Cloudflare Pages 설정 API입니다. 이 페이지는 Supabase 값을 표시하지 않습니다.</p>
+    <label for="password">접속 비밀번호 SHA-256 만들기</label>
+    <input id="password" type="password" autocomplete="new-password" placeholder="Cloudflare에 사용할 비밀번호">
+    <button id="hash">SHA-256 계산</button>
+    <div id="result" class="result">비밀번호는 이 페이지 밖으로 전송되지 않습니다.</div>
+    <p class="note">계산된 값은 Cloudflare의 <b>ACCESS_PASSWORD_SHA256</b> Secret으로 등록하세요.</p>
+  </main>
+  <script>
+    document.getElementById('hash').addEventListener('click', async () => {
+      const value = document.getElementById('password').value;
+      const result = document.getElementById('result');
+      if (!value) { result.textContent = '비밀번호를 입력하세요.'; return; }
+      const digest = await crypto.subtle.digest('SHA-256', new TextEncoder().encode(value));
+      result.textContent = [...new Uint8Array(digest)].map((b) => b.toString(16).padStart(2, '0')).join('');
+    });
+  </script>
+</body>
+</html>
