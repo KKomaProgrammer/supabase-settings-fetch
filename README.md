@@ -13,6 +13,8 @@ Entry Live Studio가 Supabase URL/브라우저 공개용 키를 직접 입력받
 
 `/functions/api/settings.js` → `POST /api/settings`
 
+`/functions/api/status.js` → `GET /api/status`
+
 `/functions/api/backup.js` → `/api/backup`
 
 `wrangler.toml`은 필요하지 않습니다.
@@ -44,13 +46,13 @@ Cloudflare Dashboard → Workers & Pages → 해당 Pages 프로젝트 → Setti
 
 ## 확장 사용 상태
 
-`EXTENSION_ACCESS_MODE` 값에 따라 `/api/settings`가 다음처럼 동작합니다.
+`EXTENSION_ACCESS_MODE` 값은 다음과 같습니다.
 
 - `0` 또는 미설정: 정상 접속
-- `1`: HTTP 503 + `점검중`
-- `2`: HTTP 403 + `사용 불가`
+- `1`: `점검중`
+- `2`: `사용 불가`
 
-다른 값은 정상(`0`)으로 처리합니다.
+다른 값은 정상(`0`)으로 처리합니다. `/api/settings`는 로그인 시 이 값을 검사하고, `/api/status`는 현재 상태만 공개합니다. v2.0.9 확장 프로그램은 `/api/status`를 약 30초마다 확인하므로 이미 연결된 사용자도 점검/사용 불가 상태로 전환됩니다. 다시 `0`으로 변경하면 저장된 세션 설정으로 자동 재연결합니다.
 
 ## 비밀번호 확인 API
 
