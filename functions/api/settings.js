@@ -90,6 +90,13 @@ function validateSupabaseConfig(url, key) {
   return null;
 }
 
+function accessMode(env) {
+  const raw = String(env.EXTENSION_ACCESS_MODE ?? '0').trim();
+  if (raw === '1') return 1;
+  if (raw === '2') return 2;
+  return 0;
+}
+
 export async function onRequestOptions(context) {
   return new Response(null, {
     status: 204,
@@ -100,34 +107,39 @@ export async function onRequestOptions(context) {
 export async function onRequestPost(context) {
   const { request, env } = context;
 
+  const mode = accessMode(env);
+  if (mode === 1) return json(request, env, { ok: false, accessMode: 1, status: 'maintenance', error: '점검중' }, 503);
+  if (mode === 2) return json(request, env, { ok: false, accessMode: 2, status: 'disabled', error: '사용 불가' }, 403);
+
   if (!env.ACCESS_PASSWORD_SHA256 || !env.SUPABASE_URL || !env.SUPABASE_ANON_KEY) {
-    return json(request, env, { ok: false, error: '서버 환경변수 설정이 완료되지 않았습니다.' }, 503);
+    return json(request, env, { ok: false, accessMode: 0, error: '서버 환경변수 설정이 완료되지 않았습니다.' }, 503);
   }
 
   let payload;
   try {
     payload = await request.json();
   } catch (_) {
-    return json(request, env, { ok: false, error: 'JSON 요청만 허용됩니다.' }, 400);
+    return json(request, env, { ok: false, accessMode: 0, error: 'JSON 요청만 허용됩니다.' }, 400);
   }
 
   const password = typeof payload?.password === 'string' ? payload.password : '';
   if (!password || password.length > 256) {
-    return json(request, env, { ok: false, error: '비밀번호를 입력하세요.' }, 400);
+    return json(request, env, { ok: false, accessMode: 0, error: '비밀번호를 입력하세요.' }, 400);
   }
 
   const actualHash = await sha256Hex(password);
   if (!constantTimeEqual(actualHash, env.ACCESS_PASSWORD_SHA256)) {
-    return json(request, env, { ok: false, error: '비밀번호가 올바르지 않습니다.' }, 401);
+    return json(request, env, { ok: false, accessMode: 0, error: '비밀번호가 올바르지 않습니다.' }, 401);
   }
 
   const configError = validateSupabaseConfig(env.SUPABASE_URL, env.SUPABASE_ANON_KEY);
   if (configError) {
-    return json(request, env, { ok: false, error: configError }, 500);
+    return json(request, env, { ok: false, accessMode: 0, error: configError }, 500);
   }
 
   return json(request, env, {
     ok: true,
+    accessMode: 0,
     serverUrl: env.SUPABASE_URL,
     anonKey: env.SUPABASE_ANON_KEY,
   });
