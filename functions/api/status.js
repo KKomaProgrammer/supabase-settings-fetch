@@ -9,28 +9,21 @@ const JSON_HEADERS = {
   'Access-Control-Max-Age': '300',
 };
 
-function accessMode(env) {
-  const raw = String(env.EXTENSION_ACCESS_MODE ?? '0').trim();
-  if (raw === '1') return 1;
-  if (raw === '2') return 2;
-  return 0;
-}
-
 export async function onRequestOptions() {
   return new Response(null, { status: 204, headers: JSON_HEADERS });
 }
 
-export async function onRequestGet(context) {
-  const mode = accessMode(context.env);
+export async function onRequestGet() {
   return new Response(JSON.stringify({
-    ok: true,
-    accessMode: mode,
-    status: mode === 1 ? 'maintenance' : mode === 2 ? 'disabled' : 'normal',
-  }), { status: 200, headers: JSON_HEADERS });
+    ok: false,
+    accessMode: 2,
+    status: 'disabled',
+    error: '이 버전은 더 이상 사용할 수 없습니다. 최신 버전으로 업데이트해 주세요.',
+  }), { status: 403, headers: JSON_HEADERS });
 }
 
-export async function onRequest(context) {
-  return new Response(JSON.stringify({ ok: false, error: 'GET 요청만 허용됩니다.' }), {
+export async function onRequest() {
+  return new Response(JSON.stringify({ ok: false, accessMode: 2, status: 'disabled', error: '이 버전은 더 이상 사용할 수 없습니다.' }), {
     status: 405,
     headers: JSON_HEADERS,
   });
