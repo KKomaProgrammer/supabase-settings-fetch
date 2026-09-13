@@ -79,12 +79,8 @@ function passwordHash(env) {
   return raw && raw !== '*' ? raw : '';
 }
 
-function requiredUpdate(env) {
-  const raw = String(env.REQUIRED_UPDATE_VERSION ?? '').trim();
-  if (!raw || raw === '*') return { requiredUpdateVersion: '*', mandatoryUpdateAll: true };
-  return /^\d+\.\d+\.\d+$/.test(raw)
-    ? { requiredUpdateVersion: raw, mandatoryUpdateAll: false }
-    : { requiredUpdateVersion: '*', mandatoryUpdateAll: true };
+function mandatoryUpdate(env) {
+  return String(env.MANDATORY_UPDATE ?? '0').trim() === '1';
 }
 
 function notice(env) {
@@ -103,9 +99,10 @@ export async function onRequestOptions(context) {
 export async function onRequestPost(context) {
   const { request, env } = context;
   const mode = accessMode(env);
-  const update = requiredUpdate(env);
-  if (mode === 1) return json(request, env, { ok: false, accessMode: 1, status: 'maintenance', error: '점검중', ...update }, 503);
-  if (mode === 2) return json(request, env, { ok: false, accessMode: 2, status: 'disabled', error: '사용 불가', ...update }, 403);
+  const mandatory = mandatoryUpdate(env);
+  const legacyUpdate = { requiredUpdateVersion: mandatory ? '*' : '', mandatoryUpdateAll: mandatory };
+  if (mode === 1) return json(request, env, { ok: false, accessMode: 1, status: 'maintenance', error: '점검중', mandatoryUpdate: mandatory, ...legacyUpdate }, 503);
+  if (mode === 2) return json(request, env, { ok: false, accessMode: 2, status: 'disabled', error: '사용 불가', mandatoryUpdate: mandatory, ...legacyUpdate }, 403);
   if (!env.SUPABASE_URL || !env.SUPABASE_ANON_KEY) return json(request, env, { ok: false, accessMode: 0, error: '서버 환경변수 설정이 완료되지 않았습니다.' }, 503);
 
   let payload = {};
@@ -128,7 +125,8 @@ export async function onRequestPost(context) {
     serverUrl: env.SUPABASE_URL,
     anonKey: env.SUPABASE_ANON_KEY,
     passwordRequired: Boolean(requiredHash),
-    ...update,
+    mandatoryUpdate: mandatory,
+    ...legacyUpdate,
     notice: notice(env),
   });
 }
