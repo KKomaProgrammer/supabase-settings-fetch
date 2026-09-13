@@ -16,12 +16,8 @@ function accessMode(env) {
   return 0;
 }
 
-function requiredUpdate(env) {
-  const raw = String(env.REQUIRED_UPDATE_VERSION ?? '').trim();
-  if (!raw || raw === '*') return { requiredUpdateVersion: '*', mandatoryUpdateAll: true };
-  return /^\d+\.\d+\.\d+$/.test(raw)
-    ? { requiredUpdateVersion: raw, mandatoryUpdateAll: false }
-    : { requiredUpdateVersion: '*', mandatoryUpdateAll: true };
+function mandatoryUpdate(env) {
+  return String(env.MANDATORY_UPDATE ?? '0').trim() === '1';
 }
 
 function notice(env) {
@@ -44,12 +40,15 @@ export async function onRequestOptions() {
 
 export async function onRequestGet(context) {
   const mode = accessMode(context.env);
-  const update = requiredUpdate(context.env);
+  const mandatory = mandatoryUpdate(context.env);
   return new Response(JSON.stringify({
     ok: true,
     accessMode: mode,
     status: mode === 1 ? 'maintenance' : mode === 2 ? 'disabled' : 'normal',
-    ...update,
+    mandatoryUpdate: mandatory,
+    // v2.2.1 compatibility: old clients understand these fields.
+    requiredUpdateVersion: mandatory ? '*' : '',
+    mandatoryUpdateAll: mandatory,
     passwordRequired: passwordRequired(context.env),
     notice: notice(context.env),
   }), { status: 200, headers: JSON_HEADERS });
