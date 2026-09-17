@@ -14,6 +14,7 @@ Entry Live Studio의 서버 설정, 사용 상태, 업데이트 패키지 전달
 - `GET /api/current/status`
 - `POST /api/current/settings`
 - `GET /api/current/update-package?version=x.y.z`
+- `GET /api/current/entry-live-update?current=x.y.z`
 - `POST /api/current/chat-backup`
 
 기존 `/api/status`, `/api/settings`는 구버전 차단용으로 유지됩니다.
@@ -31,9 +32,20 @@ Cloudflare Dashboard → Workers & Pages → 해당 Pages 프로젝트 → Setti
 | `MANDATORY_UPDATE` | Variable | `1`=발견된 최신 버전을 필수 업데이트, `0` 또는 미설정=선택 업데이트 |
 | `CHAT_NOTICE` | Variable | 공지. `제목|내용` 형식 |
 | `CHAT_BACKUP_ENCRYPTION_KEY` | **Secret** | 48시간 단기 채팅 백업 AES-GCM 암호화 키 재료. 24자 이상 권장 |
+| `ENTRY_LIVE_UPDATE_VERSION` | Variable | Entry Live Studio 원격 최신 버전. 예: `1.3.1` |
+| `ENTRY_LIVE_UPDATE_URL` | Variable | 해당 버전 ZIP의 HTTPS 다운로드 URL |
+| `ENTRY_LIVE_UPDATE_SHA256` | Variable 또는 Secret | ZIP 파일의 SHA-256 64자리 hex |
 | `ALLOWED_ORIGINS` | 선택 Variable | 쉼표로 구분한 허용 Origin. 비워 두면 `*` |
 
 `ACCESS_PASSWORD_SHA256`을 사용하는 경우 확장은 비밀번호를 소문자로 정규화하므로, 환경변수에는 **소문자 비밀번호의 SHA-256**을 등록하세요.
+
+## Entry Live Studio 직접 폴더 업데이트
+
+`GET /api/current/entry-live-update?current=x.y.z`는 `ENTRY_LIVE_UPDATE_VERSION`, `ENTRY_LIVE_UPDATE_URL`, `ENTRY_LIVE_UPDATE_SHA256`을 읽어 현재 버전보다 새 버전인지 알려줍니다. 세 값 중 하나라도 비어 있으면 `updateAvailable:false`를 반환합니다.
+
+Entry Live Studio v1.3.0 이상은 최초 한 번 사용자가 압축해제 확장 프로그램 폴더를 선택하고 그 `FileSystemDirectoryHandle`을 IndexedDB에 저장합니다. 이후 새 버전이 발견되면 같은 폴더 핸들을 다시 사용하고, 필요할 때만 읽기/쓰기 권한을 다시 요청합니다. ZIP을 다운로드한 뒤 SHA-256, ZIP 내부 경로, `manifest.json`의 확장 이름과 버전을 검증하고 파일을 교체한 다음 `chrome.runtime.reload()`로 자동 재적용합니다.
+
+이 방식은 **개발자 모드의 압축해제 확장 프로그램 전용**입니다. Chrome Web Store 배포판은 원격 코드를 받아 자체 파일을 교체하는 방식 대신 Web Store 공식 자동 업데이트를 사용해야 합니다.
 
 ## 업데이트 전달
 
@@ -95,7 +107,8 @@ Cloudflare Pages 프로젝트의 **Bindings**에 KV Namespace를 다음 이름�
 ## 보안 참고
 
 - 설정·업데이트·백업 요청은 HTTPS만 사용합니다.
-- 업데이트 프록시는 임의 URL을 받지 않고 공식 저장소의 `message_Vx.x.x.zip`만 가져옵니다.
+- `codingdongari` 업데이트 프록시는 임의 URL을 받지 않고 공식 저장소의 `message_Vx.x.x.zip`만 가져옵니다.
+- Entry Live Studio 업데이트는 Cloudflare에 관리자가 직접 등록한 HTTPS ZIP URL과 SHA-256을 사용합니다.
 - 확장 프로그램은 받은 ZIP의 SHA-256과 내부 manifest/build 정보를 다시 검증합니다.
 - `SUPABASE_ANON_KEY`에는 `sb_secret_...` 또는 service_role 키를 사용하지 마세요.
 - 네트워크 요청을 절대 가로챌 수 없다고 보장할 수는 없으므로, Cloudflare의 TLS와 필요 시 WAF/Rate Limiting을 함께 사용하세요.
