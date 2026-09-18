@@ -1,0 +1,61 @@
+name: Test settings-live
+
+on:
+  push:
+    branches: [ main ]
+  workflow_dispatch:
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - name: Test settings-live policy
+        shell: bash
+        run: |
+          set -euo pipefail
+          test -f functions/api/current/settings-live.js
+          cp functions/api/current/settings-live.js /tmp/settings-live.mjs
+          node --input-type=module <<'NODE'
+          import assert from 'node:assert/strict';
+          import crypto from 'node:crypto';
+          globalThis.crypto = crypto.webcrypto;
+          const { onRequestPost } = await import('file:///tmp/settings-live.mjs');
+
+          const sha256 = async (value) => {
+            const digest = await crypto.webcrypto.subtle.digest('SHA-256', new TextEncoder().encode(value));
+            return Buffer.from(digest).toString('hex');
+          };
+          const baseEnv = {
+            SUPABASE_URL: 'https://example.supabase.co',
+            SUPABASE_ANON_KEY: 'sb_publishable_test',
+            ACCESS_PASSWORD_SHA256: await sha256('pass123'),
+            MANDATORY_UPDATE: '0',
+          };
+          const call = async (mode, password) => {
+            const request = new Request('https://example.test/api/current/settings-live.js', {
+              method: 'POST',
+              headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify({ password }),
+            });
+            const response = await onRequestPost({ request, env: { ...baseEnv, EXTENSION_ACCESS_MODE: mode } });
+            return { status: response.status, body: await response.json() };
+          };
+
+          const maintenance = await call('1', 'pass123');
+          assert.equal(maintenance.status, 503);
+          assert.equal(maintenance.body.status, 'maintenance');
+
+          const disabledButLive = await call('2', 'pass123');
+          assert.equal(disabledButLive.status, 200);
+          assert.equal(disabledButLive.body.ok, true);
+          assert.equal(disabledButLive.body.accessMode, 0);
+
+          const wrongPassword = await call('2', 'wrong');
+          assert.equal(wrongPassword.status, 401);
+          assert.equal(wrongPassword.body.ok, false);
+          console.log('settings-live policy OK');
+          NODE
