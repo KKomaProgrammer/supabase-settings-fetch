@@ -22,7 +22,6 @@ jobs:
           node --input-type=module <<'NODE'
           import assert from 'node:assert/strict';
           import crypto from 'node:crypto';
-          globalThis.crypto = crypto.webcrypto;
           const { onRequestPost } = await import('file:///tmp/settings-live.mjs');
 
           const sha256 = async (value) => {
